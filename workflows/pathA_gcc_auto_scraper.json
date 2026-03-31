@@ -1,0 +1,409 @@
+{
+  "name": "Path A — GCC Full Auto Scraper (Ranjeet) v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "node_cron",
+      "name": "Cron — Daily 7AM Weekdays",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// PATH A — GCC FULL SEARCH URL BUILDER\n// Covers: Pune + Bangalore + Hyderabad GCC career pages\n//         + Naukri.com company-filtered searches\n//         + LinkedIn company-filtered searches\n// Role families: SIAM, Change, SDM, IT Ops, Workforce, ServiceNow\n// ============================================================\n\nconst searches = [\n\n  // ── TIER 1: PUNE GCC DIRECT CAREER PAGES ──────────────────\n\n  // Shell Business Operations — Pune\n  { board: 'Shell', label: 'Shell BO — ITSM Pune', company: 'Shell Business Operations',\n    url: 'https://www.shell.com/careers/search-and-apply.html#search=service+management&location=Pune' },\n  { board: 'Shell', label: 'Shell BO — Change Manager Pune', company: 'Shell Business Operations',\n    url: 'https://www.shell.com/careers/search-and-apply.html#search=change+manager&location=Pune' },\n\n  // Barclays India — Pune\n  { board: 'Barclays', label: 'Barclays — Change Analyst Pune', company: 'Barclays India',\n    url: 'https://search.jobs.barclays/search-jobs/change%20analyst/Pune/22796/1/2/4118/18.5203/73.8567/50/2' },\n  { board: 'Barclays', label: 'Barclays — ITSM Pune', company: 'Barclays India',\n    url: 'https://search.jobs.barclays/search-jobs/ITSM/Pune/22796/1/2/4118/18.5203/73.8567/50/2' },\n  { board: 'Barclays', label: 'Barclays — Service Delivery Pune', company: 'Barclays India',\n    url: 'https://search.jobs.barclays/search-jobs/service%20delivery/Pune/22796/1/2/4118/18.5203/73.8567/50/2' },\n\n  // Deutsche Bank — Pune\n  { board: 'DeutscheBank', label: 'Deutsche Bank — IT Change Manager Pune', company: 'Deutsche Bank',\n    url: 'https://careers.db.com/professionals/search-roles/#/professional/job/search?jobRegions=Asia%20Pacific&jobLocations=Pune&jobFunctions=Technology%2C%20Data%20and%20Innovation&searchTerm=change+manager' },\n  { board: 'DeutscheBank', label: 'Deutsche Bank — ITSM Pune', company: 'Deutsche Bank',\n    url: 'https://careers.db.com/professionals/search-roles/#/professional/job/search?jobRegions=Asia%20Pacific&jobLocations=Pune&searchTerm=ITSM' },\n\n  // Cummins GCC — Pune\n  { board: 'Cummins', label: 'Cummins — IT Service Delivery Pune', company: 'Cummins India',\n    url: 'https://careers.cummins.com/search/?q=service+delivery&locationsearch=Pune' },\n  { board: 'Cummins', label: 'Cummins — Change Management Pune', company: 'Cummins India',\n    url: 'https://careers.cummins.com/search/?q=change+management&locationsearch=Pune' },\n  { board: 'Cummins', label: 'Cummins — ServiceNow Pune', company: 'Cummins India',\n    url: 'https://careers.cummins.com/search/?q=servicenow&locationsearch=Pune' },\n\n  // VWITS — Pune\n  { board: 'VWITS', label: 'VWITS — IT Service Manager Pune', company: 'Volkswagen Group Technology Solutions India',\n    url: 'https://www.vwgroupsolutions.in/careers/?search=service+manager' },\n  { board: 'VWITS', label: 'VWITS — ServiceNow Pune', company: 'Volkswagen Group Technology Solutions India',\n    url: 'https://www.vwgroupsolutions.in/careers/?search=servicenow' },\n\n  // Eaton — Pune\n  { board: 'Eaton', label: 'Eaton — IT Operations Pune', company: 'Eaton India',\n    url: 'https://eaton.eightfold.ai/careers?query=IT+service+management&location=Pune' },\n  { board: 'Eaton', label: 'Eaton — Change Manager Pune', company: 'Eaton India',\n    url: 'https://eaton.eightfold.ai/careers?query=change+manager&location=Pune' },\n\n  // Honeywell — Pune\n  { board: 'Honeywell', label: 'Honeywell — ITSM Pune', company: 'Honeywell Technology Solutions',\n    url: 'https://careers.honeywell.com/us/en/search-results?keywords=ITSM&country=India&location=Pune' },\n  { board: 'Honeywell', label: 'Honeywell — Change Manager Pune', company: 'Honeywell Technology Solutions',\n    url: 'https://careers.honeywell.com/us/en/search-results?keywords=change+manager&country=India&location=Pune' },\n  { board: 'Honeywell', label: 'Honeywell — ServiceNow Pune', company: 'Honeywell Technology Solutions',\n    url: 'https://careers.honeywell.com/us/en/search-results?keywords=ServiceNow&country=India&location=Pune' },\n\n  // HSBC — Pune\n  { board: 'HSBC', label: 'HSBC — IT Change Manager Pune', company: 'HSBC GCC India',\n    url: 'https://www.hsbc.com/careers/jobs?eRedirectFrom=INTL&search=change+manager&country=IN&city=Pune' },\n  { board: 'HSBC', label: 'HSBC — ITSM Pune', company: 'HSBC GCC India',\n    url: 'https://www.hsbc.com/careers/jobs?eRedirectFrom=INTL&search=ITSM&country=IN&city=Pune' },\n\n  // BP — Pune\n  { board: 'BP', label: 'BP — IT Service Manager Pune', company: 'BP GCC India',\n    url: 'https://jobs.bp.com/search/?q=service+delivery+manager&location=Pune%2C+India' },\n  { board: 'BP', label: 'BP — Change Manager Pune', company: 'BP GCC India',\n    url: 'https://jobs.bp.com/search/?q=change+manager&location=Pune%2C+India' },\n\n  // Maersk — Pune\n  { board: 'Maersk', label: 'Maersk — ITSM Pune', company: 'Maersk GCC India',\n    url: 'https://www.maersk.com/careers/vacancies?query=ITSM&country=India&city=Pune' },\n  { board: 'Maersk', label: 'Maersk — Service Delivery Pune', company: 'Maersk GCC India',\n    url: 'https://www.maersk.com/careers/vacancies?query=service+delivery+manager&country=India&city=Pune' },\n\n  // Mercedes-Benz Tech India — Pune\n  { board: 'Mercedes', label: 'Mercedes-Benz — IT Operations Pune', company: 'Mercedes-Benz Tech India',\n    url: 'https://group.mercedes-benz.com/careers/job-search/job-listing.html?country=India&city=Pune&query=IT+operations' },\n\n  // ── TIER 2: BANGALORE GCC CAREER PAGES ────────────────────\n\n  // Goldman Sachs — Bangalore\n  { board: 'GoldmanSachs', label: 'Goldman Sachs — Change Manager Bangalore', company: 'Goldman Sachs India',\n    url: 'https://higher.gs.com/roles?q=change+manager&cities=Bengaluru' },\n  { board: 'GoldmanSachs', label: 'Goldman Sachs — IT Service Manager Bangalore', company: 'Goldman Sachs India',\n    url: 'https://higher.gs.com/roles?q=IT+service+management&cities=Bengaluru' },\n\n  // Bosch India — Bangalore\n  { board: 'Bosch', label: 'Bosch — IT Service Manager Bangalore', company: 'Bosch India',\n    url: 'https://www.bosch.in/careers/your-future-at-bosch/job-search/?q=IT+service+management&location=Bangalore' },\n  { board: 'Bosch', label: 'Bosch — Change Manager Bangalore', company: 'Bosch India',\n    url: 'https://www.bosch.in/careers/your-future-at-bosch/job-search/?q=change+manager&location=Bangalore' },\n\n  // Siemens GCC — Bangalore\n  { board: 'Siemens', label: 'Siemens — ITSM Bangalore', company: 'Siemens GCC India',\n    url: 'https://jobs.siemens.com/careers?query=ITSM&location=Bangalore%2C+India' },\n  { board: 'Siemens', label: 'Siemens — ServiceNow Bangalore', company: 'Siemens GCC India',\n    url: 'https://jobs.siemens.com/careers?query=ServiceNow&location=Bangalore%2C+India' },\n  { board: 'Siemens', label: 'Siemens — Change Manager Bangalore', company: 'Siemens GCC India',\n    url: 'https://jobs.siemens.com/careers?query=change+manager&location=Bangalore%2C+India' },\n\n  // EY GDS — Bangalore\n  { board: 'EY_GDS', label: 'EY GDS — IT Change Manager Bangalore', company: 'EY GDS India',\n    url: 'https://careers.ey.com/ey/search/#q=change+manager&t=Jobs&sort=relevancy&f:@countryfacet=[India]&f:@cityfacet=[Bangalore]' },\n  { board: 'EY_GDS', label: 'EY GDS — ITSM Bangalore', company: 'EY GDS India',\n    url: 'https://careers.ey.com/ey/search/#q=ITSM&t=Jobs&sort=relevancy&f:@countryfacet=[India]&f:@cityfacet=[Bangalore]' },\n  { board: 'EY_GDS', label: 'EY GDS — ServiceNow Bangalore', company: 'EY GDS India',\n    url: 'https://careers.ey.com/ey/search/#q=ServiceNow&t=Jobs&sort=relevancy&f:@countryfacet=[India]&f:@cityfacet=[Bangalore]' },\n\n  // Unilever — Bangalore\n  { board: 'Unilever', label: 'Unilever — IT Service Manager Bangalore', company: 'Unilever GCC India',\n    url: 'https://careers.unilever.com/search/?q=IT+service+management&location=Bangalore%2C+India' },\n  { board: 'Unilever', label: 'Unilever — Workforce Planning Bangalore', company: 'Unilever GCC India',\n    url: 'https://careers.unilever.com/search/?q=workforce+planning&location=Bangalore%2C+India' },\n\n  // Cargill India — Bangalore\n  { board: 'Cargill', label: 'Cargill — IT Operations Bangalore', company: 'Cargill India',\n    url: 'https://careers.cargill.com/en/job-search/?keyword=IT+operations&location=Bangalore' },\n  { board: 'Cargill', label: 'Cargill — Change Manager Bangalore', company: 'Cargill India',\n    url: 'https://careers.cargill.com/en/job-search/?keyword=change+manager&location=Bangalore' },\n\n  // Telstra India — Bangalore/Pune\n  { board: 'Telstra', label: 'Telstra — IT Operations India', company: 'Telstra India',\n    url: 'https://careers.telstra.com/search/?q=IT+operations&location=India' },\n  { board: 'Telstra', label: 'Telstra — Service Delivery India', company: 'Telstra India',\n    url: 'https://careers.telstra.com/search/?q=service+delivery&location=India' },\n\n  // American Express — Bangalore\n  { board: 'Amex', label: 'Amex — IT Operations Bangalore', company: 'American Express India',\n    url: 'https://jobs.americanexpress.com/jobs?q=IT+operations&location=Bangalore%2C+India' },\n  { board: 'Amex', label: 'Amex — Change Manager Bangalore', company: 'American Express India',\n    url: 'https://jobs.americanexpress.com/jobs?q=change+manager&location=Bangalore%2C+India' },\n\n  // Nokia India GCC — Bangalore\n  { board: 'Nokia', label: 'Nokia — IT Service Manager Bangalore', company: 'Nokia India GCC',\n    url: 'https://careers.nokia.com/jobs/search?q=IT+service+management&location=Bangalore%2C+India' },\n\n  // AstraZeneca — Bangalore/Chennai\n  { board: 'AstraZeneca', label: 'AstraZeneca — IT Change Manager India', company: 'AstraZeneca India',\n    url: 'https://careers.astrazeneca.com/jobs?q=change+manager&location=India' },\n  { board: 'AstraZeneca', label: 'AstraZeneca — ITSM India', company: 'AstraZeneca India',\n    url: 'https://careers.astrazeneca.com/jobs?q=ITSM&location=India' },\n\n  // ── TIER 2: HYDERABAD GCC CAREER PAGES ────────────────────\n\n  // JPMorgan Chase — Hyderabad\n  { board: 'JPMorgan', label: 'JPMorgan — IT Change Manager Hyderabad', company: 'JPMorgan Chase India',\n    url: 'https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions?keyword=change+manager&location=Hyderabad&locationId=300000000289738' },\n  { board: 'JPMorgan', label: 'JPMorgan — ITSM Hyderabad', company: 'JPMorgan Chase India',\n    url: 'https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions?keyword=ITSM&location=Hyderabad' },\n\n  // Deloitte USI — Hyderabad\n  { board: 'Deloitte', label: 'Deloitte USI — IT Change Manager Hyderabad', company: 'Deloitte USI',\n    url: 'https://apply.deloitte.com/careers/SearchJobs/change%20manager?3_56_3=6253551&listFilterMode=1&jobOffset=0' },\n  { board: 'Deloitte', label: 'Deloitte USI — ITSM Hyderabad', company: 'Deloitte USI',\n    url: 'https://apply.deloitte.com/careers/SearchJobs/ITSM?3_56_3=6253551&listFilterMode=1' },\n  { board: 'Deloitte', label: 'Deloitte USI — ServiceNow India', company: 'Deloitte USI',\n    url: 'https://apply.deloitte.com/careers/SearchJobs/ServiceNow?3_56_3=6253551&listFilterMode=1' },\n\n  // Novartis — Hyderabad\n  { board: 'Novartis', label: 'Novartis — IT Governance Hyderabad', company: 'Novartis India',\n    url: 'https://www.novartis.com/careers/career-search?search=IT+governance&country=India&city=Hyderabad' },\n  { board: 'Novartis', label: 'Novartis — Change Manager Hyderabad', company: 'Novartis India',\n    url: 'https://www.novartis.com/careers/career-search?search=change+manager&country=India&city=Hyderabad' },\n\n  // Standard Chartered GCC — Chennai/Bangalore\n  { board: 'StanChart', label: 'Standard Chartered — ITSM India', company: 'Standard Chartered GCC',\n    url: 'https://scb.taleo.net/careersection/ex/jobsearch.ftl?lang=en&searchExpanded=true&keyword=ITSM&location=India' },\n\n  // 3M India GCC — Bangalore\n  { board: '3M', label: '3M — IT Change Manager India', company: '3M India GCC',\n    url: 'https://www.3m.com/3M/en_US/careers-us/jobs/#0=country%3AIndia&1=department%3AIT&q=change+manager' },\n\n  // Fidelity — Bangalore/Hyderabad\n  { board: 'Fidelity', label: 'Fidelity — IT Change Management India', company: 'Fidelity Investments India',\n    url: 'https://jobs.fidelity.com/job-listings/?q=change+management&country=India' },\n  { board: 'Fidelity', label: 'Fidelity — ITSM India', company: 'Fidelity Investments India',\n    url: 'https://jobs.fidelity.com/job-listings/?q=ITSM&country=India' },\n\n  // DP World — Mumbai/Bangalore\n  { board: 'DPWorld', label: 'DP World — IT Operations India', company: 'DP World India',\n    url: 'https://www.dpworld.com/careers/jobs?q=IT+operations&location=India' },\n\n  // ── TIER 3: NAUKRI.COM COMPANY-FILTERED SEARCHES ──────────\n  // Naukri API-style search URLs — filtered by company + keywords\n  // These return JSON job data that the parser handles\n\n  { board: 'Naukri', label: 'Naukri — SIAM Service Integration Manager', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/siam-service-integration-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk&sid=16765432100&xp=1&px=1' },\n  { board: 'Naukri', label: 'Naukri — IT Change Manager GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/it-change-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — IT Change Analyst GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/it-change-analyst-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — Service Delivery Manager GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/service-delivery-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — IT Operations Manager GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/it-operations-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — ServiceNow ITSM Consultant GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/servicenow-itsm-consultant-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — Workforce Planning Manager GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/workforce-planning-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n  { board: 'Naukri', label: 'Naukri — ITIL Service Manager GCC', company: 'Multiple GCCs',\n    url: 'https://www.naukri.com/itil-service-manager-jobs-in-pune-bangalore-hyderabad?src=jobsearchDesk' },\n\n  // ── TIER 3: LINKEDIN COMPANY-FILTERED SEARCHES ────────────\n  // LinkedIn guest API — returns JSON job cards, last 24h filter\n\n  { board: 'LinkedIn', label: 'LinkedIn — Shell ITSM India', company: 'Shell Business Operations',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ITSM+service+delivery&company=Shell&f_C=1347&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Barclays Change Manager India', company: 'Barclays India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=change+manager+ITIL&company=Barclays&f_C=3744&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Deutsche Bank IT Change India', company: 'Deutsche Bank',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+change+management&company=Deutsche+Bank&f_C=1138&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — HSBC Change Analyst India', company: 'HSBC GCC India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=change+analyst+ITSM&company=HSBC&f_C=1307&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Goldman Sachs IT Service India', company: 'Goldman Sachs',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+service+management&company=Goldman+Sachs&f_C=1382&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Honeywell ITSM India', company: 'Honeywell',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ITSM+ServiceNow&company=Honeywell&f_C=448&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Maersk Service Delivery India', company: 'Maersk GCC India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+service+delivery+ITSM&company=Maersk&f_C=3982&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Bosch IT Operations India', company: 'Bosch India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+operations+manager&company=Bosch&f_C=1233&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Siemens ServiceNow India', company: 'Siemens GCC India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ServiceNow+ITSM+change&company=Siemens&f_C=1043&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — EY GDS ITSM India', company: 'EY GDS India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ITSM+change+manager&company=EY&f_C=2564&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Deloitte USI IT Service India', company: 'Deloitte USI',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+service+management+ITIL&company=Deloitte&f_C=1038&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Cummins IT Operations India', company: 'Cummins India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+operations+service+delivery&company=Cummins&f_C=1723&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — JPMorgan Change Manager India', company: 'JPMorgan Chase India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=change+manager+ITIL+ITSM&company=JPMorgan+Chase&f_C=1068&location=India&f_TPR=r86400&start=0' },\n  { board: 'LinkedIn', label: 'LinkedIn — Cargill IT Operations India', company: 'Cargill India',\n    url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=IT+operations+change+management&company=Cargill&f_C=2561&location=India&f_TPR=r86400&start=0' }\n];\n\nreturn searches.map(s => ({ json: { ...s, scraped_at: new Date().toISOString() } }));"
+      },
+      "id": "node_build_urls",
+      "name": "Code — Build All GCC Search URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/json,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9"
+            },
+            {
+              "name": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 3
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "node_http_scrape",
+      "name": "HTTP — Scrape Career Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── UNIVERSAL JOB LISTING PARSER ──────────────────────────\n// Handles: LinkedIn (JSON), Naukri (HTML), Shell, Barclays,\n// Deutsche Bank, Cummins, Honeywell, VWITS, Eaton, HSBC,\n// BP, Maersk, Mercedes, Goldman, Bosch, Siemens, EY GDS,\n// Unilever, Cargill, Telstra, Amex, Nokia, AstraZeneca,\n// JPMorgan, Deloitte, Novartis, StanChart, 3M, Fidelity,\n// DP World + generic HTML fallback\n\nconst upstream = $('Code — Build All GCC Search URLs').item.json;\nconst board = upstream.board || '';\nconst label = upstream.label || '';\nconst company = upstream.company || '';\nconst sourceUrl = upstream.url || '';\nconst scrapedAt = upstream.scraped_at || new Date().toISOString();\nconst raw = $input.first().json;\nconst html = typeof raw === 'string' ? raw : JSON.stringify(raw);\n\nconst jobs = [];\n\n// ── LinkedIn guest API (returns JSON) ─────────────────────\nif (board === 'LinkedIn') {\n  try {\n    const data = typeof raw === 'object' ? raw : JSON.parse(html);\n    const elements = data?.included || data?.elements || [];\n    elements.slice(0, 15).forEach(el => {\n      const title = el?.title || el?.jobPostingTitle || '';\n      const co = el?.primaryDescription?.text || el?.companyName || company;\n      const location = el?.secondaryDescription?.text || el?.formattedLocation || 'India';\n      const jobUrl = el?.jobPostingUrl || sourceUrl;\n      if (title) jobs.push({ title, company: co, location, url: jobUrl, board, jd_text: `${title} at ${co} — ${location}` });\n    });\n  } catch(e) {\n    // HTML fallback for LinkedIn\n    const tMatches = [...html.matchAll(/class=\"base-search-card__title\"[^>]*>\\s*([^<]+)/g)];\n    const cMatches = [...html.matchAll(/class=\"base-search-card__subtitle\"[^>]*>\\s*([^<]+)/g)];\n    const lMatches = [...html.matchAll(/class=\"job-search-card__location\"[^>]*>\\s*([^<]+)/g)];\n    const uMatches = [...html.matchAll(/href=\"(https:\\/\\/www\\.linkedin\\.com\\/jobs\\/view\\/[^\"?]+)/g)];\n    tMatches.slice(0, 15).forEach((m, i) => {\n      const title = m[1].trim();\n      const co = cMatches[i]?.[1]?.trim() || company;\n      const location = lMatches[i]?.[1]?.trim() || 'India';\n      const url = uMatches[i]?.[1] || sourceUrl;\n      if (title) jobs.push({ title, company: co, location, url, board, jd_text: `${title} at ${co} — ${location}` });\n    });\n  }\n}\n\n// ── Naukri HTML ────────────────────────────────────────────\nelse if (board === 'Naukri') {\n  const tMatches = [...html.matchAll(/class=\"title[^\"]*\"[^>]*>\\s*<[^>]+>\\s*([^<]+)/g)];\n  const cMatches = [...html.matchAll(/class=\"comp-name[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"locWdth[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const uMatches = [...html.matchAll(/href=\"(https:\\/\\/www\\.naukri\\.com\\/job-listings[^\"]+)\"/g)];\n  tMatches.slice(0, 15).forEach((m, i) => {\n    const title = m[1].trim();\n    const co = cMatches[i]?.[1]?.trim() || 'Unknown';\n    const location = lMatches[i]?.[1]?.trim() || 'India';\n    const url = uMatches[i]?.[1] || sourceUrl;\n    if (title) jobs.push({ title, company: co, location, url, board, jd_text: `${title} at ${co} — ${location}` });\n  });\n}\n\n// ── Barclays ───────────────────────────────────────────────\nelse if (board === 'Barclays') {\n  const tMatches = [...html.matchAll(/class=\"job-title[^\"]*\"[^>]*>\\s*<[^>]*>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"job-location[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const uMatches = [...html.matchAll(/href=\"(\\/job\\/[^\"]+)\"/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1].trim();\n    const location = lMatches[i]?.[1]?.trim() || 'Pune';\n    const url = uMatches[i] ? 'https://search.jobs.barclays' + uMatches[i][1] : sourceUrl;\n    if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── Honeywell ──────────────────────────────────────────────\nelse if (board === 'Honeywell') {\n  const tMatches = [...html.matchAll(/class=\"[^\"]*job[^\"]*title[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"[^\"]*job[^\"]*location[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const uMatches = [...html.matchAll(/href=\"(\\/us\\/en\\/job[^\"]+)\"/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1].trim();\n    const location = lMatches[i]?.[1]?.trim() || 'India';\n    const url = uMatches[i] ? 'https://careers.honeywell.com' + uMatches[i][1] : sourceUrl;\n    if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── Siemens ────────────────────────────────────────────────\nelse if (board === 'Siemens') {\n  const tMatches = [...html.matchAll(/\"jobTitle\":\"([^\"]+)\"/g)];\n  const lMatches = [...html.matchAll(/\"jobLocation\":\"([^\"]+)\"/g)];\n  const uMatches = [...html.matchAll(/\"jobUrl\":\"([^\"]+)\"/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1];\n    const location = lMatches[i]?.[1] || 'India';\n    const url = uMatches[i]?.[1] || sourceUrl;\n    if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n  if (jobs.length === 0) {\n    const tFallback = [...html.matchAll(/class=\"[^\"]*job-name[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n    tFallback.slice(0, 10).forEach((m, i) => {\n      const title = m[1].trim();\n      if (title) jobs.push({ title, company, location: 'Bangalore, India', url: sourceUrl, board, jd_text: `${title} at ${company} — Bangalore` });\n    });\n  }\n}\n\n// ── Goldman Sachs ──────────────────────────────────────────\nelse if (board === 'GoldmanSachs') {\n  const tMatches = [...html.matchAll(/\"title\":\"([^\"]+)\"/g)];\n  const lMatches = [...html.matchAll(/\"location\":\"([^\"]+)\"/g)];\n  const uMatches = [...html.matchAll(/\"url\":\"(\\/careers\\/[^\"]+)\"/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1];\n    const location = lMatches[i]?.[1] || 'Bangalore';\n    const url = uMatches[i] ? 'https://higher.gs.com' + uMatches[i][1] : sourceUrl;\n    if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── EY GDS ────────────────────────────────────────────────\nelse if (board === 'EY_GDS') {\n  const tMatches = [...html.matchAll(/class=\"[^\"]*result-title[^\"]*\"[^>]*>\\s*<[^>]+>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"[^\"]*result-location[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1].trim();\n    const location = lMatches[i]?.[1]?.trim() || 'India';\n    if (title) jobs.push({ title, company, location, url: sourceUrl, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── Deloitte ───────────────────────────────────────────────\nelse if (board === 'Deloitte') {\n  const tMatches = [...html.matchAll(/class=\"[^\"]*job[^\"]*title[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"[^\"]*job[^\"]*location[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const uMatches = [...html.matchAll(/href=\"(\\/careers\\/[^\"]+)\"/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1].trim();\n    const location = lMatches[i]?.[1]?.trim() || 'India';\n    const url = uMatches[i] ? 'https://apply.deloitte.com' + uMatches[i][1] : sourceUrl;\n    if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── Bosch ──────────────────────────────────────────────────\nelse if (board === 'Bosch') {\n  const tMatches = [...html.matchAll(/class=\"[^\"]*job-title[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  const lMatches = [...html.matchAll(/class=\"[^\"]*location[^\"]*\"[^>]*>\\s*([^<]+)/g)];\n  tMatches.slice(0, 10).forEach((m, i) => {\n    const title = m[1].trim();\n    const location = lMatches[i]?.[1]?.trim() || 'Bangalore, India';\n    if (title) jobs.push({ title, company, location, url: sourceUrl, board, jd_text: `${title} at ${company} — ${location}` });\n  });\n}\n\n// ── Generic HTML fallback for all other boards ─────────────\n// Catches: Shell, Cummins, VWITS, Eaton, HSBC, BP, Maersk,\n// Mercedes, Unilever, Cargill, Telstra, Amex, Nokia,\n// AstraZeneca, JPMorgan, Novartis, StanChart, 3M, Fidelity, DP World\nelse {\n  // Try JSON title extraction first\n  const jsonTitles = [...html.matchAll(/\"(?:jobTitle|title|position|positionTitle|requisitionTitle)\":\"([^\"]{5,120})\"/g)];\n  const jsonLocations = [...html.matchAll(/\"(?:location|jobLocation|city|workLocation)\":\"([^\"]{2,80})\"/g)];\n  const jsonUrls = [...html.matchAll(/\"(?:url|applyUrl|jobUrl|link)\":\"(https?:\\/\\/[^\"]+)\"/g)];\n\n  if (jsonTitles.length > 0) {\n    jsonTitles.slice(0, 10).forEach((m, i) => {\n      const title = m[1];\n      const location = jsonLocations[i]?.[1] || 'India';\n      const url = jsonUrls[i]?.[1] || sourceUrl;\n      if (title) jobs.push({ title, company, location, url, board, jd_text: `${title} at ${company} — ${location}` });\n    });\n  } else {\n    // Pure HTML fallback — common heading patterns across career sites\n    const patterns = [\n      /class=\"[^\"]*(?:job-?title|position-?title|vacancy-?title|role-?title)[^\"]*\"[^>]*>\\s*(?:<[^>]+>)?\\s*([^<]{5,120})/g,\n      /<h[123][^>]*class=\"[^\"]*job[^\"]*\"[^>]*>\\s*([^<]{5,120})/g,\n      /<a[^>]+class=\"[^\"]*(?:job|position|role)[^\"]*\"[^>]*>\\s*([^<]{5,120})/g\n    ];\n    for (const pattern of patterns) {\n      const matches = [...html.matchAll(pattern)];\n      if (matches.length > 0) {\n        matches.slice(0, 10).forEach(m => {\n          const title = m[1].replace(/&amp;/g, '&').replace(/&#039;/g, \"'\").trim();\n          if (title && title.length > 4) {\n            jobs.push({ title, company, location: 'India', url: sourceUrl, board, jd_text: `${title} at ${company} — India` });\n          }\n        });\n        break;\n      }\n    }\n  }\n}\n\n// Skip marker if nothing found\nif (jobs.length === 0) {\n  return [{ json: { _skip: true, reason: `No jobs parsed from ${board}`, board, label, sourceUrl, scraped_at: scrapedAt } }];\n}\n\nreturn jobs.map(j => ({ json: { ...j, label, scraped_at: scrapedAt } }));"
+      },
+      "id": "node_parse_html",
+      "name": "Code — Parse Listings from Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "skip_check",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node_filter_skip",
+      "name": "IF — Valid Listing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── 6-FAMILY KEYWORD RELEVANCE FILTER ─────────────────────\n// Family 1: SIAM / Service Integration\n// Family 2: IT Change Manager / Change Analyst\n// Family 3: IT Service Delivery Manager\n// Family 4: IT Operations Manager\n// Family 5: Workforce / Capacity Planning\n// Family 6: ServiceNow Specialist / Consultant\n\nconst item = $input.first().json;\nconst title = (item.title || '').toLowerCase();\nconst jd = (item.jd_text || '').toLowerCase();\nconst combined = title + ' ' + jd;\n\nconst FAMILIES = {\n  'SIAM': ['siam', 'service integration', 'service integrat', 'multi-vendor governance', 'multi vendor governance', 'service integration manager'],\n  'Change': ['change manager', 'change analyst', 'change management', 'change advisory', 'cab chair', 'itil change', 'change governance', 'it change'],\n  'SDM': ['service delivery manager', 'service delivery lead', 'sdm', 'it service delivery', 'managed services delivery', 'service level manager'],\n  'IT_Ops': ['it operations manager', 'it operations lead', 'it ops manager', 'infrastructure manager', 'it service manager', 'itsm manager', 'it service management', 'itsm lead', 'itsm governance', 'service manager'],\n  'Workforce': ['workforce planning', 'capacity planning', 'resource manager', 'workforce manager', 'staffing manager', 'resource planning', 'workforce strategy', 'rebadging', 'pyramid optimis'],\n  'ServiceNow': ['servicenow', 'service now', 'snow consultant', 'snow specialist', 'servicenow itsm', 'servicenow developer', 'servicenow admin', 'servicenow architect', 'now platform']\n};\n\nconst matched_families = [];\nconst matched_keywords = [];\n\nfor (const [family, keywords] of Object.entries(FAMILIES)) {\n  for (const kw of keywords) {\n    if (combined.includes(kw)) {\n      if (!matched_families.includes(family)) matched_families.push(family);\n      if (!matched_keywords.includes(kw)) matched_keywords.push(kw);\n    }\n  }\n}\n\n// Exclude clearly irrelevant roles that may slip through generic scrapes\nconst EXCLUSIONS = ['software engineer', 'data scientist', 'machine learning engineer', 'data analyst', 'frontend developer', 'backend developer', 'devops engineer', 'qa engineer', 'test engineer', 'accountant', 'finance analyst', 'recruiter', 'hr business partner', 'graphic designer', 'legal counsel', 'sales executive', 'marketing manager'];\nconst excluded = EXCLUSIONS.some(ex => title.includes(ex));\n\nif (matched_families.length === 0 || excluded) {\n  return [{ json: { ...item, _relevant: false, matched_families: [], matched_keywords: [] } }];\n}\n\nreturn [{ json: { ...item, _relevant: true, matched_families, matched_keywords } }];"
+      },
+      "id": "node_keyword_filter",
+      "name": "Code — 6-Family Keyword Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 280]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "relevant_check",
+              "leftValue": "={{ $json._relevant }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node_if_relevant",
+      "name": "IF — Relevant Role?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'llama3.2', prompt: 'You are a JD parser. Extract structured information from the job description below.\\n\\nReturn ONLY valid JSON — no preamble, no markdown, no explanation.\\n\\nOutput schema:\\n{\\n  \"required_skills\": [\"string\"],\\n  \"preferred_skills\": [\"string\"],\\n  \"years_experience\": \"string\",\\n  \"seniority_level\": \"string\",\\n  \"key_responsibilities\": [\"string\"],\\n  \"ats_keywords\": [\"string\"],\\n  \"certifications_required\": [\"string\"],\\n  \"domain\": \"string\"\\n}\\n\\nJob Title: ' + $json.title + '\\nCompany: ' + $json.company + '\\nLocation: ' + $json.location + '\\nRole Family Match: ' + ($json.matched_families || []).join(', ') + '\\n\\nJob Description:\\n' + $json.jd_text, stream: false }) }}"
+      },
+      "id": "node_ollama_parse",
+      "name": "Ollama — Parse JD Requirements",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.response || $input.first().json.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst upstream = $('Code — 6-Family Keyword Filter').item.json;\ntry {\n  const parsed = JSON.parse(cleaned);\n  return [{ json: { ...upstream, jd_parsed: parsed } }];\n} catch(e) {\n  return [{ json: { ...upstream, jd_parsed: {}, parse_error: true, raw_ollama: raw } }];\n}"
+      },
+      "id": "node_parse_ollama_json",
+      "name": "Code — Parse Ollama JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $credentials.anthropicApi.apiKey }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, temperature: 0.2, messages: [{ role: 'user', content: 'You are an expert resume matcher and career advisor.\\n\\nScore this GCC job against Ranjeet Chavan profile. Return ONLY valid JSON. No preamble, no markdown.\\n\\n--- RANJEET PROFILE SUMMARY ---\\n18 years IT experience | Pune, India\\nCore strengths:\\n1. SIAM & Multi-Vendor Governance: Led SIAM framework for Shell Global (40+ countries, multi-vendor) — SLA governance, vendor accountability, executive dashboards, SOX compliance\\n2. IT Change Management: CAB chair, end-to-end change lifecycle, zero-disruption deployment standard, audit-ready documentation, ITIL compliance — Cargill global operations\\n3. IT Service Delivery: ServiceNow ITSM/CMDB, catalog design, workflow automation, 50+ catalog items — TCS\\n4. Workforce & Capacity Planning: 900+ rebadged workforce across 14 EMEA countries — Cargill EMEA. Global mobility, pyramid optimisation, COVID crisis response\\n5. Program Delivery: 35-member task force, FTTO fiber rollout for Telstra Australia, 12-month backlog cleared in 90 days, SLA/MSA penalty avoidance\\n6. Agentic AI Automation: n8n, Ollama, Docker, PostgreSQL, Linux systemd — built working AI research agent (GitHub verified)\\nCerts: ITIL Foundation x2 | In Progress: PSM I, TOGAF\\nEducation: BCom IT — Himalayan University (distance, 2013-2015)\\nKey wins: 30% downtime reduction at Shell | 12-month backlog cleared 90 days at Telstra | 900+ workforce optimised Cargill EMEA\\n\\n--- JOB TO SCORE ---\\nTitle: ' + $json.title + '\\nCompany: ' + $json.company + '\\nLocation: ' + $json.location + '\\nBoard: ' + $json.board + '\\nRole Families Matched: ' + JSON.stringify($json.matched_families || []) + '\\nRequired Skills: ' + JSON.stringify(($json.jd_parsed || {}).required_skills || []) + '\\nPreferred Skills: ' + JSON.stringify(($json.jd_parsed || {}).preferred_skills || []) + '\\nATS Keywords: ' + JSON.stringify(($json.jd_parsed || {}).ats_keywords || []) + '\\nSeniority: ' + (($json.jd_parsed || {}).seniority_level || 'unknown') + '\\nYears Required: ' + (($json.jd_parsed || {}).years_experience || 'unknown') + '\\nKey Responsibilities: ' + JSON.stringify(($json.jd_parsed || {}).key_responsibilities || []) + '\\n\\n--- OUTPUT SCHEMA ---\\n{\\n  \"score\": 0,\\n  \"match_strengths\": [\"string\"],\\n  \"skill_gaps\": [\"string\"],\\n  \"recommended_title_tweak\": \"string\",\\n  \"priority\": \"high | medium | low\",\\n  \"apply_recommended\": true,\\n  \"role_family\": \"string\"\\n}' }] }) }}",
+        "options": {}
+      },
+      "id": "node_claude_score",
+      "name": "Claude — Score JD Match",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 280],
+      "credentials": {
+        "anthropicApi": { "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst raw = resp.content?.[0]?.text || resp.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst upstream = $('Code — Parse Ollama JSON').item.json;\ntry {\n  const parsed = JSON.parse(cleaned);\n  return [{ json: { ...upstream, ...parsed } }];\n} catch(e) {\n  return [{ json: { ...upstream, parse_error: true, raw_score: raw, score: 0, match_strengths: [], skill_gaps: [], priority: 'low', apply_recommended: false, role_family: 'unknown' } }];\n}"
+      },
+      "id": "node_parse_score_json",
+      "name": "Code — Parse Score JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 280]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "score_check",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": { "type": "number", "operation": "gte" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node_if_threshold",
+      "name": "IF — Score >= 70?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2660, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $credentials.anthropicApi.apiKey }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, temperature: 0.3, messages: [{ role: 'user', content: 'You are an expert resume writer for senior IT professionals. Generate a fully tailored, ATS-optimised resume for Ranjeet Chavan for the role below.\\n\\nNEVER fabricate or inflate skills. Only include what is truthfully in the profile below. If a required skill is missing, note it in gap_analysis only.\\n\\n--- TARGET ROLE ---\\nTitle: ' + $json.title + '\\nCompany: ' + $json.company + '\\nLocation: ' + $json.location + '\\nRole Family: ' + ($json.role_family || '') + '\\nATS Keywords: ' + JSON.stringify(($json.jd_parsed || {}).ats_keywords || []) + '\\nKey Responsibilities: ' + JSON.stringify(($json.jd_parsed || {}).key_responsibilities || []) + '\\nMatch Strengths: ' + JSON.stringify($json.match_strengths || []) + '\\nRecommended Title Tweak: ' + ($json.recommended_title_tweak || '') + '\\n\\n--- RANJEET CHAVAN — VERIFIED PROFILE ---\\nContact: ranjeetc04@gmail.com | Pune, India | linkedin.com/in/ranjeet-chavan | github.com/itsolutions413544-boop\\n\\nProfessional Summary (tailor this to the target role):\\nIT Service Management professional with 18 years of enterprise delivery experience across Shell, Cargill, and Telstra. Specialising in ITIL 4 governance, SIAM multi-vendor frameworks, IT change management, and ServiceNow ITSM. Reduced critical system downtime 30% at Shell through predictive analytics. Building AI-augmented IT operations capability using n8n, Ollama, and Docker.\\n\\nEXPERIENCE:\\n\\n1. IT Solutions / Open Mind Lab | Enterprise IT Ops & Automation Lead | Mar 2023–Present | Pune\\n- Deployed and managed IT infrastructure across 50+ service delivery points (VLE network)\\n- Hardware installation, OS configuration, software deployment and standardisation\\n- Built automated research agent using n8n + Ollama (local LLM) + PostgreSQL — Docker containerised, systemd service hardened, UFW firewall configured (GitHub: github.com/itsolutions413544-boop/open-mind-lab-ai-research)\\n- Explored agentic workflow automation for IT operational tasks\\n\\n2. Tata Consultancy Services | ServiceNow Catalog & Workflow Automation Specialist | May 2022–May 2023 | Pune\\n- Designed and developed 50+ Service Catalog items across hardware, software, and IT service domains\\n- Built end-to-end catalog workflows including high-end laptop provisioning with automated approval routing\\n- Configured catalog variables, UI Policies, form validations for accurate data capture\\n- Standardised catalog structure across multiple IT services for scalability and reuse\\n\\n3. Tata Consultancy Services | Enterprise IT Governance & Service Integration Leader — Shell Global | Mar 2020–May 2022 | Pune\\n- Led service integration and performance governance for Shell global IT operations across 40+ countries\\n- Consolidated incident, problem, and change performance data into executive dashboards and forecasting models\\n- Established governance frameworks to enforce SLA compliance and vendor accountability across multi-vendor ecosystem\\n- Chaired governance forums with cross-functional teams and vendors — driving performance reviews and continuous improvement\\n- Acted as interface between delivery teams and Shell global leadership with data-driven recommendations\\n- Reduced critical system downtime by 30% through predictive analytics implementation\\n\\n4. Tata Consultancy Services | Resource Manager — Workforce & Capacity Planning (Cargill EMEA) | Feb 2019–Mar 2020 | Pune\\n- Directed end-to-end workforce planning and talent allocation across 14 EMEA countries\\n- Managed 900+ rebadged workforce — pyramid optimisation, cost reduction, SLA maintenance\\n- Handled global mobility, cross-border deployments, visa and labor law compliance across EMEA\\n- Applied ITIL-aligned service capacity principles for resource availability planning\\n- Led rapid workforce restructuring during COVID-19 for remote work surge — ensured business continuity\\n\\n5. Tata Consultancy Services | IT Change Management Analyst — ITIL Governance & Risk Control | Feb 2018–Feb 2019 | Pune\\n- Governed end-to-end IT change lifecycle: request validation, impact assessment, approval workflows, scheduling, post-implementation review\\n- Chaired Change Advisory Board (CAB) across infrastructure, application, and business teams\\n- Enforced zero-disruption deployment standard and strict ITIL compliance across all changes\\n- Assessed technical and business risk; ensured rollback strategies prior to every deployment\\n- Maintained audit-ready documentation for enterprise governance and regulatory requirements\\n- Monitored change success rates, failures, and SLA adherence metrics\\n\\n6. Tata Consultancy Services | Network Transformation Program Manager — Telstra (Fiber Rollout) | Aug 2015–Feb 2018 | Pune\\n- Led FTTO fiber rollout for large enterprise clients across Australia under Telstra national network transformation\\n- Built and led 35-member cross-functional task force — cleared 12-month aged order backlog within 90 days\\n- Operated in high-stakes SLA/MSA environment with direct accountability for financial penalty avoidance\\n- Coordinated HLD to LLD network design transitions, field execution, and provisioning workflows\\n- Orchestrated delivery across TCS, Telstra, external vendors, and NBN\\n\\n7. Earlier (2007–2015): Tracmail India (US Telecom/Healthcare revenue recovery) | Wipro — Capital One (credit card back-office) | Tata BSS (DTH customer support) | Andromeda Marketing | Pagepoint Communications (Airtel B2B helpdesk)\\n\\nCERTIFICATIONS: ITIL Foundation (x2) | BCBF Examination Certificate\\nIN PROGRESS: PSM I (Scrum.org) | TOGAF Foundation & Practitioner\\nTECH STACK: ServiceNow ITSM/CMDB | n8n | Ollama | Docker | PostgreSQL | Linux/systemd/UFW | Claude Code\\nEDUCATION: BCom (Information Technology) — Himalayan University, 2013–2015\\n\\n--- OUTPUT JSON (no markdown, no preamble, exactly this structure) ---\\n{\\n  \"resume_markdown\": \"complete tailored resume in markdown — lead with the most relevant experience for this role family\",\\n  \"cover_summary\": \"3-sentence cover letter opening — specific to this company and role\",\\n  \"gap_analysis\": [\"honest gap 1\", \"honest gap 2\"],\\n  \"ats_keywords_used\": [\"keyword1\", \"keyword2\"]\\n}' }] }) }}",
+        "options": {}
+      },
+      "id": "node_claude_resume",
+      "name": "Claude — Generate Tailored Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 180],
+      "credentials": {
+        "anthropicApi": { "name": "Anthropic API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst raw = resp.content?.[0]?.text || resp.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst upstream = $('Code — Parse Score JSON').item.json;\ntry {\n  const parsed = JSON.parse(cleaned);\n  return [{ json: { ...upstream, ...parsed } }];\n} catch(e) {\n  return [{ json: { ...upstream, parse_error: true, resume_markdown: raw, cover_summary: '', gap_analysis: [], ats_keywords_used: [] } }];\n}"
+      },
+      "id": "node_parse_resume_json",
+      "name": "Code — Parse Resume JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 180]
+    },
+    {
+      "parameters": {
+        "driveId": { "__rl": true, "value": "My Drive", "mode": "list" },
+        "folderId": { "__rl": true, "value": "Job Applications GCC", "mode": "list" },
+        "name": "={{ $json.company }}_{{ $json.title }}_{{ $now.format('yyyy-MM-dd') }}.md",
+        "driveResource": { "resourceType": "file" },
+        "options": {
+          "googleFileConvertMimes": {
+            "mimeTypeConvert": [
+              { "from": "text/plain", "to": "application/vnd.google-apps.document" }
+            ]
+          }
+        },
+        "binaryData": false,
+        "fileContent": "={{ $json.resume_markdown }}"
+      },
+      "id": "node_google_drive",
+      "name": "Google Drive — Save Resume",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [3320, 80],
+      "credentials": {
+        "googleDriveOAuth2Api": { "name": "Google OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ranjeetc04@gmail.com",
+        "subject": "=[GCC Match | {{ $json.score }}/100 | {{ $json.priority.toUpperCase() }}] {{ $json.company }} — {{ $json.title }}",
+        "emailType": "html",
+        "message": "=<h2>GCC Job Match — {{ $json.company }}</h2>\n<table style='font-family:sans-serif;font-size:14px;border-collapse:collapse;width:100%'>\n<tr><td style='padding:6px;color:#666;width:140px'>Role</td><td style='padding:6px;font-weight:500'>{{ $json.title }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Company</td><td style='padding:6px'>{{ $json.company }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Location</td><td style='padding:6px'>{{ $json.location }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Source</td><td style='padding:6px'>{{ $json.board }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Role Family</td><td style='padding:6px'>{{ $json.role_family }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Match Score</td><td style='padding:6px;font-weight:500;color:{{ $json.score >= 85 ? '#0a7c4e' : $json.score >= 70 ? '#1a5f8a' : '#666' }}'>{{ $json.score }} / 100</td></tr>\n<tr><td style='padding:6px;color:#666'>Priority</td><td style='padding:6px;font-weight:500'>{{ $json.priority.toUpperCase() }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Apply?</td><td style='padding:6px;font-weight:500'>{{ $json.apply_recommended ? '✅ YES' : '⚠ Review' }}</td></tr>\n<tr><td style='padding:6px;color:#666'>Job URL</td><td style='padding:6px'><a href='{{ $json.url }}'>View Listing →</a></td></tr>\n</table>\n\n<h3 style='margin-top:20px'>Why You Match</h3>\n<ul>{{ ($json.match_strengths || []).map(s => '<li>' + s + '</li>').join('') }}</ul>\n\n<h3>Skill Gaps</h3>\n<ul>{{ ($json.skill_gaps || []).map(g => '<li>' + g + '</li>').join('') }}</ul>\n\n<h3>Cover Letter Opening</h3>\n<p style='background:#f5f5f5;padding:12px;border-radius:6px'>{{ $json.cover_summary }}</p>\n\n<h3>Gap Analysis</h3>\n<ul>{{ ($json.gap_analysis || []).map(g => '<li>' + g + '</li>').join('') }}</ul>\n\n<h3>Keywords Matched</h3>\n<p>{{ ($json.matched_keywords || []).join(' · ') }}</p>\n<p>Role families: {{ ($json.matched_families || []).join(', ') }}</p>\n\n<hr style='margin-top:20px'>\n<p style='color:#999;font-size:12px'>Scraped: {{ $json.scraped_at }} | Resume saved: Job Applications GCC/{{ $json.company }}_{{ $json.title }}_{{ $now.format('yyyy-MM-dd') }}</p>",
+        "options": {}
+      },
+      "id": "node_gmail",
+      "name": "Gmail — Email Alert to Self",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3320, 240],
+      "credentials": {
+        "gmailOAuth2": { "name": "Google OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/forms/chromium/convert/markdown",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ content: $json.resume_markdown }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "resume_docx"
+            }
+          }
+        }
+      },
+      "id": "node_docx_convert",
+      "name": "HTTP — Convert to DOCX (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 400]
+    }
+  ],
+  "connections": {
+    "Cron — Daily 7AM Weekdays": {
+      "main": [[{ "node": "Code — Build All GCC Search URLs", "type": "main", "index": 0 }]]
+    },
+    "Code — Build All GCC Search URLs": {
+      "main": [[{ "node": "HTTP — Scrape Career Page", "type": "main", "index": 0 }]]
+    },
+    "HTTP — Scrape Career Page": {
+      "main": [[{ "node": "Code — Parse Listings from Page", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Listings from Page": {
+      "main": [[{ "node": "IF — Valid Listing?", "type": "main", "index": 0 }]]
+    },
+    "IF — Valid Listing?": {
+      "main": [
+        [{ "node": "Code — 6-Family Keyword Filter", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Code — 6-Family Keyword Filter": {
+      "main": [[{ "node": "IF — Relevant Role?", "type": "main", "index": 0 }]]
+    },
+    "IF — Relevant Role?": {
+      "main": [
+        [{ "node": "Ollama — Parse JD Requirements", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Ollama — Parse JD Requirements": {
+      "main": [[{ "node": "Code — Parse Ollama JSON", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Ollama JSON": {
+      "main": [[{ "node": "Claude — Score JD Match", "type": "main", "index": 0 }]]
+    },
+    "Claude — Score JD Match": {
+      "main": [[{ "node": "Code — Parse Score JSON", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Score JSON": {
+      "main": [[{ "node": "IF — Score >= 70?", "type": "main", "index": 0 }]]
+    },
+    "IF — Score >= 70?": {
+      "main": [
+        [{ "node": "Claude — Generate Tailored Resume", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Claude — Generate Tailored Resume": {
+      "main": [[{ "node": "Code — Parse Resume JSON", "type": "main", "index": 0 }]]
+    },
+    "Code — Parse Resume JSON": {
+      "main": [[
+        { "node": "Google Drive — Save Resume", "type": "main", "index": 0 },
+        { "node": "Gmail — Email Alert to Self", "type": "main", "index": 0 },
+        { "node": "HTTP — Convert to DOCX (Gotenberg)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Google Drive — Save Resume": { "main": [[]] },
+    "Gmail — Email Alert to Self": { "main": [[]] },
+    "HTTP — Convert to DOCX (Gotenberg)": { "main": [[]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["job-automation", "path-a", "gcc", "india", "all-tiers"],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "pinData": {}
+}

@@ -1,0 +1,418 @@
+{
+  "name": "Path B — Manual JD Paste (Ranjeet) FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manual-jd",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node_webhook",
+      "name": "Webhook — Manual JD Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "manual-jd-paste"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field_title",
+              "name": "title",
+              "value": "={{ $json.body.title }}",
+              "type": "string"
+            },
+            {
+              "id": "field_company",
+              "name": "company",
+              "value": "={{ $json.body.company }}",
+              "type": "string"
+            },
+            {
+              "id": "field_jd_text",
+              "name": "jd_text",
+              "value": "={{ $json.body.jd_text }}",
+              "type": "string"
+            },
+            {
+              "id": "field_source",
+              "name": "source",
+              "value": "manual",
+              "type": "string"
+            },
+            {
+              "id": "field_url",
+              "name": "url",
+              "value": "={{ $json.body.url ?? 'N/A' }}",
+              "type": "string"
+            },
+            {
+              "id": "field_timestamp",
+              "name": "submitted_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node_set_normalise",
+      "name": "Set — Normalise Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'llama3.2', prompt: 'You are a JD parser. Extract structured information from the job description below.\\n\\nReturn ONLY valid JSON — no preamble, no markdown, no explanation.\\n\\nOutput schema:\\n{\\n  \"required_skills\": [\"string\"],\\n  \"preferred_skills\": [\"string\"],\\n  \"years_experience\": \"string\",\\n  \"seniority_level\": \"string\",\\n  \"key_responsibilities\": [\"string\"],\\n  \"ats_keywords\": [\"string\"],\\n  \"certifications_required\": [\"string\"],\\n  \"domain\": \"string\"\\n}\\n\\nJob Title: ' + $json.title + '\\nCompany: ' + $json.company + '\\n\\nJob Description:\\n' + $json.jd_text, stream: false }) }}",
+        "options": {}
+      },
+      "id": "node_ollama_parse",
+      "name": "Ollama — Parse JD Requirements",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.response || $input.first().json.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\ntry {\n  const parsed = JSON.parse(cleaned);\n  // Carry forward normalised payload fields alongside parsed JD\n  const upstream = $('Set — Normalise Payload').item.json;\n  return [{ json: { ...upstream, jd_parsed: parsed } }];\n} catch(e) {\n  const upstream = $('Set — Normalise Payload').item.json;\n  return [{ json: { ...upstream, jd_parsed: {}, parse_error: true, raw_output: raw } }];\n}"
+      },
+      "id": "node_parse_ollama_json",
+      "name": "Code — Parse Ollama JSON Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropicApi.apiKey }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, temperature: 0.2, messages: [{ role: 'user', content: 'You are an expert resume matcher and career advisor.\\n\\nScore this job against Ranjeet Chavan profile and return ONLY valid JSON. No preamble, no markdown.\\n\\n--- RANJEET PROFILE ---\\nName: Ranjeet Chavan\\nLocation: Pune, India\\nEmail: ranjeetc04@gmail.com\\nLinkedIn: linkedin.com/in/ranjeet-chavan\\n\\nCore Skills:\\n- ITIL 4 · SIAM · ServiceNow ITSM/CMDB · Change Management\\n- Multi-vendor governance · SLA/KPI management · P&L governance\\n- Agentic AI (n8n, Ollama, Claude Code, Docker) · Workflow automation\\n- Linux/systemd/UFW · PostgreSQL · n8n · Predictive analytics\\n\\nExperience (reverse-chron):\\n1. IT Solutions / Open Mind Lab — Enterprise IT Ops & Automation Lead (Mar 2023–Present)\\n2. TCS — ServiceNow Catalog Specialist (May 2022–May 2023)\\n3. TCS — Shell Governance Leader (Mar 2020–May 2022) — SIAM framework, multi-vendor SLA governance\\n4. TCS — Cargill EMEA Resource Manager (Feb 2019–Mar 2020) — 900+ member workforce, EMEA capacity\\n5. TCS — Change Management Analyst (Feb 2018–Feb 2019)\\n6. TCS — Telstra Program Manager (Aug 2015–Feb 2018)\\n\\nKey Achievements:\\n- Reduced critical downtime 30% via predictive analytics at Shell\\n- Cleared 12-month backlog in 90 days at Telstra\\n- Optimised 900+ member workforce for Cargill EMEA\\n\\nCertifications: ITIL Foundation (x2)\\nIn Progress: PSM I · TOGAF Foundation\\n\\n--- JOB TO SCORE ---\\nTitle: ' + $json.title + '\\nCompany: ' + $json.company + '\\nRequired Skills: ' + JSON.stringify($json.jd_parsed.required_skills) + '\\nPreferred Skills: ' + JSON.stringify($json.jd_parsed.preferred_skills) + '\\nATS Keywords: ' + JSON.stringify($json.jd_parsed.ats_keywords) + '\\nSeniority: ' + $json.jd_parsed.seniority_level + '\\nYears Experience Needed: ' + $json.jd_parsed.years_experience + '\\nCertifications Required: ' + JSON.stringify($json.jd_parsed.certifications_required) + '\\nKey Responsibilities: ' + JSON.stringify($json.jd_parsed.key_responsibilities) + '\\n\\n--- OUTPUT SCHEMA ---\\n{\\n  \"score\": 0,\\n  \"match_strengths\": [\"string\"],\\n  \"skill_gaps\": [\"string\"],\\n  \"recommended_title_tweak\": \"string\",\\n  \"priority\": \"high | medium | low\",\\n  \"apply_recommended\": true\\n}' }] }) }}",
+        "options": {}
+      },
+      "id": "node_claude_b4_score",
+      "name": "Claude — Score JD Match",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst raw = resp.content?.[0]?.text || resp.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst upstream = $('Code — Parse Ollama JSON Output').item.json;\ntry {\n  const parsed = JSON.parse(cleaned);\n  return [{ json: { ...upstream, ...parsed } }];\n} catch(e) {\n  return [{ json: { ...upstream, parse_error: true, raw_score_output: raw, score: 0, match_strengths: [], skill_gaps: [], priority: 'low', apply_recommended: false } }];\n}"
+      },
+      "id": "node_parse_score_json",
+      "name": "Code — Parse Score JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "score_check",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node_if_threshold",
+      "name": "IF — Score >= 70?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropicApi.apiKey }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, temperature: 0.3, messages: [{ role: 'user', content: 'You are an expert resume writer for senior IT professionals. Generate a fully tailored, ATS-optimised resume for Ranjeet Chavan for the role below.\\n\\nNEVER fabricate or inflate skills. Only include what is truthfully in the profile. If a required skill is missing, note it in gap_analysis only.\\n\\n--- TARGET ROLE ---\\nTitle: ' + $json.title + '\\nCompany: ' + $json.company + '\\nATS Keywords to weave in naturally: ' + JSON.stringify($json.jd_parsed.ats_keywords) + '\\nKey Responsibilities to address: ' + JSON.stringify($json.jd_parsed.key_responsibilities) + '\\nScore Strengths: ' + JSON.stringify($json.match_strengths) + '\\nRecommended Title Tweak: ' + $json.recommended_title_tweak + '\\n\\n--- RANJEET PROFILE ---\\nContact: ranjeetc04@gmail.com | Pune, India | linkedin.com/in/ranjeet-chavan\\n\\nProfessional summary: AI-Driven IT Operations Leader with 18 years across Shell, Cargill, Telstra. Specialising in ITIL 4, SIAM, ServiceNow ITSM/CMDB, multi-vendor governance, P&L management, and agentic AI automation (n8n, Ollama, Claude Code, Docker). Reduced critical downtime 30% at Shell.\\n\\nExperience:\\n1. IT Solutions / Open Mind Lab | Enterprise IT Ops & Automation Lead | Mar 2023–Present\\n- Deployed IT infrastructure across 50+ VLE service delivery points\\n- Built agentic AI automation pipelines using n8n, Ollama, Docker, Claude Code\\n\\n2. TCS | ServiceNow Catalog & Workflow Automation Specialist | May 2022–May 2023\\n- Built 50+ Service Catalog items; automated provisioning workflows\\n\\n3. TCS | Enterprise IT Transformation & Service Governance Leader — Shell | Mar 2020–May 2022\\n- Led SIAM framework across Shell global multi-vendor IT environment\\n- Reduced critical downtime 30% via predictive analytics\\n\\n4. TCS | Resource Manager — Cargill EMEA | Feb 2019–Mar 2020\\n- Directed workforce planning for 900+ rebadged staff across EMEA\\n\\n5. TCS | IT Change Management Analyst | Feb 2018–Feb 2019\\n- Governed end-to-end change lifecycle; chaired CAB meetings\\n\\n6. TCS | Network Transformation Program Manager — Telstra | Aug 2015–Feb 2018\\n- Led FTTO fiber rollout; cleared 12-month backlog in 90 days\\n\\n7. Earlier (2007–2015): Tracmail · Wipro · Tata BSS · Andromeda · Pagepoint\\n\\nCertifications: ITIL Foundation (x2) · In Progress: PSM I · TOGAF\\nTech: ServiceNow · n8n · Ollama · Docker · PostgreSQL · Linux · Claude Code\\n\\n--- OUTPUT (return this exact JSON, no markdown, no preamble) ---\\n{\\n  \"resume_markdown\": \"full resume in markdown format\",\\n  \"cover_summary\": \"3-sentence cover letter opening paragraph\",\\n  \"gap_analysis\": [\"honest gap 1\", \"honest gap 2\"],\\n  \"ats_keywords_used\": [\"keyword1\", \"keyword2\"]\\n}' }] }) }}",
+        "options": {}
+      },
+      "id": "node_claude_b7_resume",
+      "name": "Claude — Generate Tailored Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 160],
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst raw = resp.content?.[0]?.text || resp.text || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst upstream = $('Code — Parse Score JSON').item.json;\ntry {\n  const parsed = JSON.parse(cleaned);\n  return [{ json: { ...upstream, ...parsed } }];\n} catch(e) {\n  return [{ json: { ...upstream, parse_error: true, resume_markdown: raw, cover_summary: '', gap_analysis: [], ats_keywords_used: [] } }];\n}"
+      },
+      "id": "node_parse_resume_json",
+      "name": "Code — Parse Resume JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 160]
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "Job Applications",
+          "mode": "list"
+        },
+        "name": "={{ $json.company }}_{{ $json.title }}_{{ $now.format('yyyy-MM-dd') }}.md",
+        "driveResource": {
+          "resourceType": "file"
+        },
+        "options": {
+          "googleFileConvertMimes": {
+            "mimeTypeConvert": [
+              {
+                "from": "text/plain",
+                "to": "application/vnd.google-apps.document"
+              }
+            ]
+          }
+        },
+        "binaryData": false,
+        "fileContent": "={{ $json.resume_markdown }}"
+      },
+      "id": "node_google_drive",
+      "name": "Google Drive — Save Resume Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [2220, 60],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ranjeetc04@gmail.com",
+        "subject": "=[Score: {{ $json.score }}] {{ $json.company }} — {{ $json.title }}",
+        "emailType": "html",
+        "message": "=<h2>Job Match Alert</h2>\n<p><strong>Role:</strong> {{ $json.title }}<br>\n<strong>Company:</strong> {{ $json.company }}<br>\n<strong>Match Score:</strong> {{ $json.score }} / 100<br>\n<strong>Priority:</strong> {{ $json.priority }}</p>\n\n<h3>Match Strengths</h3>\n<ul>{{ $json.match_strengths.map(s => '<li>' + s + '</li>').join('') }}</ul>\n\n<h3>Skill Gaps</h3>\n<ul>{{ $json.skill_gaps.map(g => '<li>' + g + '</li>').join('') }}</ul>\n\n<h3>Cover Letter Opening</h3>\n<p>{{ $json.cover_summary }}</p>\n\n<h3>Gap Analysis</h3>\n<ul>{{ $json.gap_analysis.map(g => '<li>' + g + '</li>').join('') }}</ul>\n\n<hr>\n<p><em>Resume saved to Google Drive: Job Applications/{{ $json.company }}_{{ $json.title }}_{{ $now.format('yyyy-MM-dd') }}</em></p>",
+        "options": {}
+      },
+      "id": "node_gmail_b9",
+      "name": "Gmail — Email Alert to Self",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2220, 220],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/forms/chromium/convert/markdown",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ content: $json.resume_markdown }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "resume_docx"
+            }
+          }
+        }
+      },
+      "id": "node_docx_convert",
+      "name": "HTTP — Convert to DOCX (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', score: $json.score, title: $json.title, company: $json.company, priority: $json.priority, apply_recommended: $json.apply_recommended }) }}"
+      },
+      "id": "node_high_score_response",
+      "name": "Respond — High Score Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2440, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'skipped', reason: 'score below threshold', score: $json.score, title: $json.title, company: $json.company }) }}"
+      },
+      "id": "node_low_score_response",
+      "name": "Respond — Low Score Skip",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 440]
+    }
+  ],
+  "connections": {
+    "Webhook — Manual JD Trigger": {
+      "main": [
+        [{ "node": "Set — Normalise Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set — Normalise Payload": {
+      "main": [
+        [{ "node": "Ollama — Parse JD Requirements", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ollama — Parse JD Requirements": {
+      "main": [
+        [{ "node": "Code — Parse Ollama JSON Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code — Parse Ollama JSON Output": {
+      "main": [
+        [{ "node": "Claude — Score JD Match", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude — Score JD Match": {
+      "main": [
+        [{ "node": "Code — Parse Score JSON", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code — Parse Score JSON": {
+      "main": [
+        [{ "node": "IF — Score >= 70?", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF — Score >= 70?": {
+      "main": [
+        [{ "node": "Claude — Generate Tailored Resume", "type": "main", "index": 0 }],
+        [{ "node": "Respond — Low Score Skip", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude — Generate Tailored Resume": {
+      "main": [
+        [{ "node": "Code — Parse Resume JSON", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code — Parse Resume JSON": {
+      "main": [
+        [
+          { "node": "Google Drive — Save Resume Doc", "type": "main", "index": 0 },
+          { "node": "Gmail — Email Alert to Self", "type": "main", "index": 0 },
+          { "node": "HTTP — Convert to DOCX (Gotenberg)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Google Drive — Save Resume Doc": {
+      "main": [
+        [{ "node": "Respond — High Score Success", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail — Email Alert to Self": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP — Convert to DOCX (Gotenberg)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["job-automation", "path-b", "manual"],
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "pinData": {}
+}
